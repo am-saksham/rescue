@@ -1,4 +1,5 @@
 import 'package:emergency_app/Screens/Help_me/first_screen.dart';
+import 'package:emergency_app/Screens/Want_to_help/first_screen.dart';
 import 'package:emergency_app/Screens/home_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -20,6 +21,12 @@ class MyApp extends StatelessWidget {
       ),
       home: HomeScreen(),
       debugShowCheckedModeBanner: false,
+      initialRoute: '/home', // Default screen
+      routes: {
+        '/home': (context) => HomeScreen(),
+        '/help_me': (context) => HelpMeScreen1(),
+        '/i_want_to_help': (context) => WantToHelpScreen1(),
+      },
     );
   }
 }

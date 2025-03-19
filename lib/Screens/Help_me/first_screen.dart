@@ -1,12 +1,14 @@
 import 'package:emergency_app/Screens/Help_me/second_screen.dart';
+import 'package:emergency_app/Widgets/app_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../Widgets/header.dart';
 import '../../Widgets/navigation_bar.dart';
 
 class HelpMeScreen1 extends StatelessWidget {
-  const HelpMeScreen1({super.key});
+  HelpMeScreen1({super.key});
 
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   @override
   Widget build(BuildContext context) {
     final List<String> emergencyOptions = [
@@ -20,7 +22,9 @@ class HelpMeScreen1 extends StatelessWidget {
     ];
 
     return Scaffold(
-      appBar: const NavigationBarWidget(),
+      key: _scaffoldKey,
+      appBar: NavigationBarWidget(scaffoldKey: _scaffoldKey),
+      drawer: AppDrawer(selectedItem: 'Help me!',),
       body: SizedBox.expand(
         child: Stack(
           children: [
