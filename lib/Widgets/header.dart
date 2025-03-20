@@ -15,7 +15,7 @@ class HeaderWidget extends StatelessWidget {
           top: 30,
           left: 32,
           child: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black, size: 28),
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.black, size: 28),
             onPressed: () {
               Navigator.pop(context);
             },

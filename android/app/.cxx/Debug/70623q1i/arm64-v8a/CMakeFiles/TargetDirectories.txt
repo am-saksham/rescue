@@ -1,0 +1,2 @@
+/Volumes/SSD_MAC/emergency_app/android/app/.cxx/Debug/70623q1i/arm64-v8a/CMakeFiles/edit_cache.dir
+/Volumes/SSD_MAC/emergency_app/android/app/.cxx/Debug/70623q1i/arm64-v8a/CMakeFiles/rebuild_cache.dir

@@ -1,6 +1,8 @@
 import 'package:emergency_app/Screens/Help_me/first_screen.dart';
 import 'package:emergency_app/Screens/Want_to_help/first_screen.dart';
 import 'package:emergency_app/Screens/home_screen.dart';
+import 'package:emergency_app/Screens/safety_guide.dart';
+import 'package:emergency_app/compass_map.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -26,6 +28,9 @@ class MyApp extends StatelessWidget {
         '/home': (context) => HomeScreen(),
         '/help_me': (context) => HelpMeScreen1(),
         '/i_want_to_help': (context) => WantToHelpScreen1(),
+        '/safety_guides': (context) => SafetyGuideScreen(),
+        '/compass': (context) => CompassMapScreen(),
+        '/map': (context) => CompassMapScreen(),
       },
     );
   }
