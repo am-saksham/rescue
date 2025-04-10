@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:emergency_app/Screens/Want_to_help/second_screen.dart';
 import 'package:emergency_app/Widgets/app_drawer.dart';
 import 'package:flutter/material.dart';
@@ -39,6 +41,34 @@ class WantToHelpScreen1 extends StatelessWidget {
 
     Position position = await Geolocator.getCurrentPosition();
     _locationController.text = "${position.latitude}, ${position.longitude}";
+  }
+
+  void _saveVolunteerDetails(BuildContext context) async {
+    final url = Uri.parse('https://rescue-api-zwxb.onrender.com/api/volunteers');
+
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'name': _nameController.text,
+        'contact': _contactController.text,
+        'message': _messageController.text,
+      }),
+    );
+
+    if (response.statusCode == 201) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => WantToHelpScreen2()),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Failed to save details. Please try again."),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -209,10 +239,7 @@ class WantToHelpScreen1 extends StatelessWidget {
                             );
                           } else {
                             // Navigate to the second screen
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => WantToHelpScreen2()), // Replace with actual second screen
-                            );
+                            _saveVolunteerDetails(context);
                           }
                         },
                         style: ElevatedButton.styleFrom(
