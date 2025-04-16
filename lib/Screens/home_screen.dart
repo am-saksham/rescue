@@ -1,5 +1,6 @@
 import 'package:emergency_app/Screens/Help_me/first_screen.dart';
 import 'package:emergency_app/Screens/Want_to_help/first_screen.dart';
+import 'package:emergency_app/Screens/Want_to_help/second_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -25,7 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
     } else if (buttonText == "I want to help.") {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => WantToHelpScreen1()),
+        MaterialPageRoute(builder: (context) => WantToHelpScreen0()),
       );
     }
   }

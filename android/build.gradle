@@ -2,6 +2,16 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        maven {
+            url "${project(':background_fetch').projectDir}/libs"
+        }
+        maven {
+            url "${project(':flutter_background_geolocation').projectDir}/libs"
+        }
+        // Or use the new hosted location:
+        maven {
+            url "https://s3.amazonaws.com/transistor-software-maven/"
+        }
     }
 }
 
