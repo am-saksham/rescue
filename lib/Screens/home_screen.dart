@@ -1,8 +1,10 @@
 import 'package:emergency_app/Screens/Help_me/first_screen.dart';
 import 'package:emergency_app/Screens/Want_to_help/first_screen.dart';
-import 'package:emergency_app/Screens/Want_to_help/second_screen.dart';
+import 'package:emergency_app/Screens/Want_to_help/dashboard_screen.dart';
+import 'package:emergency_app/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -12,21 +14,53 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String selectedButton = ""; // Track selected button
 
-  void handleButtonTap(String buttonText) {
+  Future<void> handleButtonTap(String buttonText) async {
     setState(() {
       selectedButton = buttonText;
     });
 
-    // Navigate to the appropriate screen
     if (buttonText == "Help me!") {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => HelpMeScreen1()),
       );
     } else if (buttonText == "I want to help.") {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => WantToHelpScreen0()),
+      // Check if user is already logged in
+      final isLoggedIn = await AuthService.isLoggedIn();
+
+      if (isLoggedIn) {
+        // User is logged in, go to dashboard
+        final userData = await AuthService.getUserData();
+        if (!mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DashboardScreen(
+              userEmail: userData['email'],
+              userName: userData['name'],
+              userProfilePic: userData['profilePic'],
+            ),
+          ),
+        );
+      } else {
+        // User not logged in, go to volunteer flow
+        if (!mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => WantToHelpScreen0()),
+        );
+      }
+    } else if (buttonText == "RL Agent Model") {
+      await _launchRLAgentURL();
+    }
+  }
+
+  Future<void> _launchRLAgentURL() async {
+    final Uri uri = Uri.parse('https://rescue-and-search-ahmmxngzcelzbrkkydspwc.streamlit.app/');
+
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not launch the RL Agent Model')),
       );
     }
   }
@@ -77,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 // Black Box with Buttons
                 Container(
-                  height: MediaQuery.of(context).size.height * 0.5,
+                  height: MediaQuery.of(context).size.height * 0.6, // Increased height to accommodate third button
                   width: double.infinity,
                   color: Colors.black,
                   child: Column(
@@ -93,6 +127,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         text: "I want to help.",
                         isSelected: selectedButton == "I want to help.",
                         onTap: () => handleButtonTap("I want to help."),
+                      ),
+                      SizedBox(height: 34),
+                      HoverButton(
+                        text: "RL Agent Model",
+                        isSelected: selectedButton == "RL Agent Model",
+                        onTap: () => handleButtonTap("RL Agent Model"),
                       ),
                     ],
                   ),

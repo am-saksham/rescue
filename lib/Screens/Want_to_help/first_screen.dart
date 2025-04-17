@@ -5,7 +5,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-
 import '../../Widgets/app_drawer.dart';
 import '../../Widgets/header.dart';
 import '../../Widgets/navigation_bar.dart';
@@ -15,42 +14,50 @@ class WantToHelpScreen0 extends StatelessWidget {
   WantToHelpScreen0({super.key});
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  final TextEditingController _contactController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
 
   void _handleSubmit(BuildContext context) async {
-    String contact = _contactController.text.trim();
+    String email = _emailController.text.trim();
 
-    if (contact.length != 10) {
+    // Basic email validation
+    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter a valid 10-digit number.")),
+        const SnackBar(content: Text("Please enter a valid email address")),
       );
       return;
     }
 
     try {
+      // Check if email exists in the system
       final response = await http.get(
-        Uri.parse('https://rescue-api-zwxb.onrender.com/api/volunteers/$contact'),
+        Uri.parse('https://rescue-api-zwxb.onrender.com/api/volunteers/email/$email'),
       );
 
       if (response.statusCode == 200) {
-        // Contact exists, proceed to OTP
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const OtpScreen()),
-        );
-      } else if (response.statusCode == 404) {
-        // Contact not found
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("User does not exist. Please register first.")),
-        );
+        final responseData = jsonDecode(response.body);
+
+        if (responseData['exists'] == true) {
+          // Email exists, proceed to OTP screen
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OtpScreen(to_email: email),
+            ),
+          );
+        } else {
+          // Email not found
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Email not registered. Please register first.")),
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Unexpected error occurred.")),
+          const SnackBar(content: Text("Error verifying email. Please try again.")),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Something went wrong: $e")),
+        SnackBar(content: Text("Connection error: ${e.toString()}")),
       );
     }
   }
@@ -87,7 +94,7 @@ class WantToHelpScreen0 extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "CONTACT NUMBER:",
+                      "EMAIL ADDRESS:",
                       style: GoogleFonts.poppins(
                         fontSize: 22,
                         fontWeight: FontWeight.w500,
@@ -95,14 +102,10 @@ class WantToHelpScreen0 extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     TextField(
-                      controller: _contactController,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(10),
-                      ],
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
-                        hintText: "Enter your contact number...",
+                        hintText: "Enter your email address...",
                         hintStyle: GoogleFonts.poppins(color: Colors.black),
                         filled: true,
                         fillColor: Colors.white,

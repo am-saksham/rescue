@@ -1,0 +1,1 @@
+/Volumes/SSD_MAC/emergency_app/build/app/intermediates/cxx/RelWithDebInfo/4s4n265l/obj/arm64-v8a

@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_compass/flutter_compass.dart';
@@ -19,12 +21,119 @@ class _CompassMapScreenState extends State<CompassMapScreen> {
   String selectedButton = "Nearest Hospitals"; // Default selection
   late GoogleMapController _mapController;
   LatLng? _currentPosition;
+  Set<Marker> _placeMarkers = {};
 
   @override
   void initState() {
     super.initState();
     _determinePosition();
   }
+
+  Future<void> _fetchNearbyHospitals() async {
+    if (_currentPosition == null) return;
+
+    final lat = _currentPosition!.latitude;
+    final lng = _currentPosition!.longitude;
+    const radius = 10000; // 10 km
+    const type = "hospital";
+    const apiKey = "AIzaSyDNJdTUIO4ztOVUZDD7QfSVPMxy3RDFirE";
+
+    final url = Uri.parse(
+        'https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=$lat,$lng&radius=$radius&type=$type&key=$apiKey');
+
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final List results = data['results'];
+
+      final markers = results.map((place) {
+        final loc = place['geometry']['location'];
+        final name = place['name'];
+        return Marker(
+          markerId: MarkerId(place['place_id']),
+          position: LatLng(loc['lat'], loc['lng']),
+          infoWindow: InfoWindow(title: name),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+        );
+      }).toSet();
+
+      setState(() {
+        _placeMarkers = markers;
+      });
+    }
+  }
+
+  Future<void> _fetchNearbyFireStations() async {
+    if (_currentPosition == null) return;
+
+    final lat = _currentPosition!.latitude;
+    final lng = _currentPosition!.longitude;
+    const radius = 10000;
+    const type = "fire_station";
+    const apiKey = "AIzaSyDNJdTUIO4ztOVUZDD7QfSVPMxy3RDFirE";
+
+    final url = Uri.parse(
+        'https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=$lat,$lng&radius=$radius&type=$type&key=$apiKey');
+
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final List results = data['results'];
+
+      final markers = results.map((place) {
+        final loc = place['geometry']['location'];
+        final name = place['name'];
+        return Marker(
+          markerId: MarkerId(place['place_id']),
+          position: LatLng(loc['lat'], loc['lng']),
+          infoWindow: InfoWindow(title: name),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+        );
+      }).toSet();
+
+      setState(() {
+        _placeMarkers = markers;
+      });
+    }
+  }
+
+  Future<void> _fetchNearbyPoliceStations() async {
+    if (_currentPosition == null) return;
+
+    final lat = _currentPosition!.latitude;
+    final lng = _currentPosition!.longitude;
+    const radius = 10000;
+    const type = "police";
+    const apiKey = "AIzaSyDNJdTUIO4ztOVUZDD7QfSVPMxy3RDFirE";
+
+    final url = Uri.parse(
+        'https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=$lat,$lng&radius=$radius&type=$type&key=$apiKey');
+
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final List results = data['results'];
+
+      final markers = results.map((place) {
+        final loc = place['geometry']['location'];
+        final name = place['name'];
+        return Marker(
+          markerId: MarkerId(place['place_id']),
+          position: LatLng(loc['lat'], loc['lng']),
+          infoWindow: InfoWindow(title: name),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+        );
+      }).toSet();
+
+      setState(() {
+        _placeMarkers = markers;
+      });
+    }
+  }
+
+
+
+
 
   Future<void> _determinePosition() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -41,6 +150,7 @@ class _CompassMapScreenState extends State<CompassMapScreen> {
     }
 
     Position position = await Geolocator.getCurrentPosition();
+    print("Current Location: ${position.latitude}, ${position.longitude}");
     setState(() {
       _currentPosition = LatLng(position.latitude, position.longitude);
     });
@@ -145,22 +255,38 @@ class _CompassMapScreenState extends State<CompassMapScreen> {
                     /// Transparent Buttons Section
                     Column(
                       children: [
+                        const SizedBox(height: 10),
                         SelectableButton(
                           label: "Nearest Hospitals",
                           isSelected: selectedButton == "Nearest Hospitals",
-                          onTap: () => setState(() => selectedButton = "Nearest Hospitals"),
+                          onTap: () {
+                            setState(() {
+                              selectedButton = "Nearest Hospitals";
+                            });
+                            _fetchNearbyHospitals();
+                          },
                         ),
                         const SizedBox(height: 10),
                         SelectableButton(
                           label: "Fire Stations",
                           isSelected: selectedButton == "Fire Stations",
-                          onTap: () => setState(() => selectedButton = "Fire Stations"),
+                          onTap: () {
+                            setState(() {
+                              selectedButton = "Fire Stations";
+                            });
+                            _fetchNearbyFireStations();
+                          },
                         ),
                         const SizedBox(height: 10),
                         SelectableButton(
-                          label: "Clean Water Sources",
-                          isSelected: selectedButton == "Clean Water Sources",
-                          onTap: () => setState(() => selectedButton = "Clean Water Sources"),
+                          label: "Police Stations",
+                          isSelected: selectedButton == "Police Stations",
+                          onTap: () {
+                            setState(() {
+                              selectedButton = "Police Stations";
+                            });
+                            _fetchNearbyPoliceStations();
+                          },
                         ),
                       ],
                     ),
@@ -180,15 +306,10 @@ class _CompassMapScreenState extends State<CompassMapScreen> {
                   ? const Center(child: CircularProgressIndicator())
                   : GoogleMap(
                 initialCameraPosition: CameraPosition(target: _currentPosition!, zoom: 15),
-                markers: {
-                  Marker(
-                    markerId: const MarkerId("current_location"),
-                    position: _currentPosition!,
-                    infoWindow: const InfoWindow(title: "You are here"),
-                  ),
-                },
+                markers: _placeMarkers,
                 onMapCreated: (controller) => _mapController = controller,
                 myLocationEnabled: true,
+                myLocationButtonEnabled: true, // <-- Add this line
                 zoomControlsEnabled: false,
               ),
             ),

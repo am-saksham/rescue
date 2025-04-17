@@ -1,0 +1,2 @@
+/Volumes/SSD_MAC/emergency_app/android/app/.cxx/RelWithDebInfo/4s4n265l/x86/CMakeFiles/edit_cache.dir
+/Volumes/SSD_MAC/emergency_app/android/app/.cxx/RelWithDebInfo/4s4n265l/x86/CMakeFiles/rebuild_cache.dir

@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:emergency_app/Screens/Want_to_help/third_screen.dart';
@@ -10,14 +12,35 @@ import 'package:geolocator/geolocator.dart';
 import '../../Widgets/header.dart';
 import '../../Widgets/navigation_bar.dart';
 
-class WantToHelpScreen1 extends StatelessWidget {
-  WantToHelpScreen1({super.key});
+class WantToHelpScreen1 extends StatefulWidget {
+  const WantToHelpScreen1({super.key});
 
+  @override
+  State<WantToHelpScreen1> createState() => _WantToHelpScreen1State();
+}
+
+class _WantToHelpScreen1State extends State<WantToHelpScreen1> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _contactController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
   final TextEditingController _messageController = TextEditingController();
+
+  StreamSubscription<Position>? _positionStream;
+  String? _volunteerId;
+  bool _isTracking = false;
+  Timer? _locationUpdateTimer;
+
+  @override
+  void dispose() {
+    _positionStream?.cancel();
+    _locationUpdateTimer?.cancel();
+    _nameController.dispose();
+    _emailController.dispose();
+    _locationController.dispose();
+    _messageController.dispose();
+    super.dispose();
+  }
 
   Future<String> getDeviceIp() async {
     try {
@@ -25,20 +48,33 @@ class WantToHelpScreen1 extends StatelessWidget {
       if (response.statusCode == 200) {
         return response.body;
       } else {
-        return "unknown"; // Return a default value if the API fails
+        return "unknown";
       }
     } catch (e) {
       debugPrint("Error getting IP address: $e");
-      return "unknown"; // Return a default value if there's an error
+      return "unknown";
     }
   }
 
-  Future<void> _getCurrentLocation() async {
+  // Helper function to normalize email (preserve dots, only lowercase)
+  String normalizeEmail(String email) {
+    return email.trim().toLowerCase();
+  }
+
+  // Email validation function
+  bool isValidEmail(String email) {
+    return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
+  }
+
+  Future<void> _toggleLocationTracking() async {
     bool serviceEnabled;
     LocationPermission permission;
 
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Location services are disabled.')),
+      );
       return;
     }
 
@@ -46,26 +82,109 @@ class WantToHelpScreen1 extends StatelessWidget {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Location permissions are denied')),
+        );
         return;
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Location permissions are permanently denied')),
+      );
       return;
     }
 
-    Position position = await Geolocator.getCurrentPosition();
-    _locationController.text = "${position.latitude}, ${position.longitude}";
+    if (_isTracking) {
+      _stopLocationTracking();
+    } else {
+      _startLocationTracking();
+    }
+  }
+
+  void _startLocationTracking() {
+    setState(() {
+      _isTracking = true;
+    });
+
+    // Get initial position
+    Geolocator.getCurrentPosition().then((position) {
+      _updateLocationUI(position);
+      if (_volunteerId != null) {
+        _updateVolunteerLocation(position);
+      }
+    });
+
+    // Start periodic updates
+    _positionStream = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 0, // Get all updates
+      ),
+    ).listen((Position position) {
+      _updateLocationUI(position);
+      if (_volunteerId != null) {
+        _updateVolunteerLocation(position);
+      }
+    });
+
+    // Setup timer for periodic updates (every second)
+    _locationUpdateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_isTracking) {
+        Geolocator.getLastKnownPosition().then((position) {
+          if (position != null) {
+            _updateLocationUI(position);
+            if (_volunteerId != null) {
+              _updateVolunteerLocation(position);
+            }
+          }
+        });
+      }
+    });
+  }
+
+  void _stopLocationTracking() {
+    _positionStream?.cancel();
+    _locationUpdateTimer?.cancel();
+    setState(() {
+      _isTracking = false;
+    });
+  }
+
+  void _updateLocationUI(Position position) {
+    setState(() {
+      _locationController.text = "${position.latitude}, ${position.longitude}";
+    });
+  }
+
+  Future<void> _updateVolunteerLocation(Position position) async {
+    try {
+      final url = Uri.parse('https://rescue-api-zwxb.onrender.com/api/volunteers/location');
+
+      final response = await http.put(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': normalizeEmail(_emailController.text),
+          'latitude': position.latitude,
+          'longitude': position.longitude,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        debugPrint('Failed to update location: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('Error updating location: $e');
+    }
   }
 
   void _saveVolunteerDetails(BuildContext context) async {
     try {
-      String deviceIp = await getDeviceIp();
-      final url = Uri.parse('https://rescue-api-zwxb.onrender.com/api/volunteers');
-
-      // Validate all fields
+      // Validate fields first
       if (_nameController.text.isEmpty ||
-          _contactController.text.isEmpty ||
+          _emailController.text.isEmpty ||
           _locationController.text.isEmpty ||
           _messageController.text.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -80,12 +199,29 @@ class WantToHelpScreen1 extends StatelessWidget {
         return;
       }
 
+      // Validate email format
+      if (!isValidEmail(_emailController.text)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Please enter a valid email address",
+              style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      String deviceIp = await getDeviceIp();
+      final url = Uri.parse('https://rescue-api-zwxb.onrender.com/api/volunteers');
+
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'name': _nameController.text,
-          'contact': _contactController.text,
+          'email': normalizeEmail(_emailController.text),
           'message': _messageController.text,
           'ip_address': deviceIp,
         }),
@@ -93,52 +229,63 @@ class WantToHelpScreen1 extends StatelessWidget {
 
       final responseBody = jsonDecode(response.body);
 
+      // Updated response handling
       if (response.statusCode == 201) {
-        if (responseBody['success'] == true && responseBody['_id'] != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                responseBody['message'] ?? "Volunteer saved!",
-                style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w500),
-              ),
-              backgroundColor: Colors.green,
-            ),
-          );
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => WantToHelpScreen2(
-                volunteerId: responseBody['_id'],
-              ),
-            ),
-          );
-        } else {
-          throw Exception("Invalid response format");
+        // Check for both possible response formats (old and new)
+        final volunteerId = responseBody['_id'] ?? responseBody['data']?['_id'];
+
+        if (volunteerId == null) {
+          throw FormatException("Missing volunteer ID in response");
         }
-      } else if (response.statusCode == 400) {
+
+        setState(() => _volunteerId = volunteerId);
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              responseBody['message'] ?? "This contact already exists!",
+              responseBody['message'] ?? "Registration successful!",
               style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w500),
             ),
-            backgroundColor: Colors.orange,
+            backgroundColor: Colors.green,
           ),
         );
+
+        _startLocationTracking();
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => WantToHelpScreen2(volunteerId: volunteerId),
+          ),
+        );
+      } else if (response.statusCode == 400) {
+        final errorMsg = responseBody['message'] ?? "This email is already registered";
+        throw Exception(errorMsg);
       } else {
-        throw Exception("Failed with status code: ${response.statusCode}");
+        throw Exception("Request failed with status ${response.statusCode}");
       }
-    } catch (e) {
+    } on FormatException catch (e) {
+      debugPrint("Response format error: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            "Failed to save details. Please try again.",
+            "Server response format error. Please try again.",
             style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w500),
           ),
           backgroundColor: Colors.red,
         ),
       );
-      debugPrint("Error saving volunteer details: $e");
+    } catch (e) {
+      debugPrint("Registration error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.toString().replaceAll("Exception: ", ""),
+            style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w500),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -169,8 +316,7 @@ class WantToHelpScreen1 extends StatelessWidget {
             top: 240,
             child: SingleChildScrollView(
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -191,32 +337,25 @@ class WantToHelpScreen1 extends StatelessWidget {
                             vertical: 20, horizontal: 16),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(29),
-                          borderSide:
-                              const BorderSide(color: Colors.black, width: 2),
+                          borderSide: const BorderSide(color: Colors.black, width: 2),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(29),
-                          borderSide:
-                              const BorderSide(color: Colors.black, width: 2),
+                          borderSide: const BorderSide(color: Colors.black, width: 2),
                         ),
                       ),
                     ),
                     const SizedBox(height: 32),
                     Text(
-                      "CONTACT NUMBER:",
-                      style: GoogleFonts.poppins(
-                          fontSize: 22, fontWeight: FontWeight.w500),
+                      "EMAIL ID:",
+                      style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 8),
                     TextField(
-                      controller: _contactController,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(10),
-                      ],
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
-                        hintText: "Enter your contact number...",
+                        hintText: "Enter your email ID...",
                         hintStyle: GoogleFonts.poppins(color: Colors.black),
                         filled: true,
                         fillColor: Colors.white,
@@ -224,13 +363,11 @@ class WantToHelpScreen1 extends StatelessWidget {
                             vertical: 20, horizontal: 16),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(29),
-                          borderSide:
-                              const BorderSide(color: Colors.black, width: 2),
+                          borderSide: const BorderSide(color: Colors.black, width: 2),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(29),
-                          borderSide:
-                              const BorderSide(color: Colors.black, width: 2),
+                          borderSide: const BorderSide(color: Colors.black, width: 2),
                         ),
                       ),
                     ),
@@ -252,31 +389,33 @@ class WantToHelpScreen1 extends StatelessWidget {
                             vertical: 20, horizontal: 16),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(29),
-                          borderSide:
-                              const BorderSide(color: Colors.black, width: 2),
+                          borderSide: const BorderSide(color: Colors.black, width: 2),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(29),
-                          borderSide:
-                              const BorderSide(color: Colors.black, width: 2),
+                          borderSide: const BorderSide(color: Colors.black, width: 2),
                         ),
                       ),
                     ),
                     const SizedBox(height: 8),
                     GestureDetector(
-                      onTap: _getCurrentLocation,
+                      onTap: _toggleLocationTracking,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          Icon(LucideIcons.mapPin,
-                              color: Colors.grey, size: 20),
+                          Icon(
+                            _isTracking ? LucideIcons.mapPinOff : LucideIcons.mapPin,
+                            color: _isTracking ? Colors.green : Colors.grey,
+                            size: 20,
+                          ),
                           const SizedBox(width: 8),
                           Text(
-                            "Track my location",
+                            _isTracking ? "Stop Tracking" : "Track my location",
                             style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                color: Colors.grey,
-                                fontWeight: FontWeight.w500),
+                              fontSize: 14,
+                              color: _isTracking ? Colors.green : Colors.grey,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ],
                       ),
@@ -300,13 +439,11 @@ class WantToHelpScreen1 extends StatelessWidget {
                             vertical: 16, horizontal: 16),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(20),
-                          borderSide:
-                              const BorderSide(color: Colors.black, width: 2),
+                          borderSide: const BorderSide(color: Colors.black, width: 2),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(20),
-                          borderSide:
-                              const BorderSide(color: Colors.black, width: 2),
+                          borderSide: const BorderSide(color: Colors.black, width: 2),
                         ),
                       ),
                     ),
@@ -316,7 +453,7 @@ class WantToHelpScreen1 extends StatelessWidget {
                       child: ElevatedButton(
                         onPressed: () {
                           if (_nameController.text.isEmpty ||
-                              _contactController.text.isEmpty ||
+                              _emailController.text.isEmpty ||
                               _locationController.text.isEmpty ||
                               _messageController.text.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -330,8 +467,19 @@ class WantToHelpScreen1 extends StatelessWidget {
                                 backgroundColor: Colors.red,
                               ),
                             );
+                          } else if (!isValidEmail(_emailController.text)) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  "Please enter a valid email address",
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500),
+                                ),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
                           } else {
-                            // Navigate to the second screen
                             _saveVolunteerDetails(context);
                           }
                         },
