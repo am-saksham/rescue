@@ -36,6 +36,15 @@
 | Real-Time Location              | ✅ Google Maps integration                                 | ✅ Yes                             |
 | Custom Community Deployments    | ✅ For campuses, societies, private communities            | ❌ Government-controlled only      |
 
+## 🖼️ App Screenshots
+
+<p align="center">
+  <img src="screenshots/home.png" width="200">
+  <img src="screenshots/emergency.png" width="200">
+  <img src="screenshots/map.png" width="200">
+  <img src="screenshots/chat.png" width="200">
+</p>
+
 ## 🚀 How It Works
 
 1. A **victim** taps the emergency button in the app.
