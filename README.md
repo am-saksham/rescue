@@ -39,15 +39,19 @@
 ## 🖼️ App Screenshots
 
 <p align="center">
-  <img src="assets/r1.png" width="200" style="margin: 10px;">
-  <img src="assets/r2.png" width="200" style="margin: 10px;">
-  <img src="assets/r3.png" width="200" style="margin: 10px;">
-  <img src="assets/r4.png" width="200" style="margin: 10px;">
-  <img src="assets/r5.png" width="200" style="margin: 10px;">
-  <img src="assets/r6.png" width="200" style="margin: 10px;">
-  <img src="assets/r7.png" width="200" style="margin: 10px;">
-  <img src="assets/r8.png" width="200" style="margin: 10px;">
-  <img src="assets/r9.png" width="200" style="margin: 10px;">
+  <img src="assets/r1.png" width="200">&nbsp;&nbsp;
+  <img src="assets/r2.png" width="200">&nbsp;&nbsp;
+  <img src="assets/r3.png" width="200">
+</p>
+<p align="center">
+  <img src="assets/r4.png" width="200">&nbsp;&nbsp;
+  <img src="assets/r5.png" width="200">&nbsp;&nbsp;
+  <img src="assets/r6.png" width="200">
+</p>
+<p align="center">
+  <img src="assets/r7.png" width="200">&nbsp;&nbsp;
+  <img src="assets/r8.png" width="200">&nbsp;&nbsp;
+  <img src="assets/r9.png" width="200">
 </p>
 
 ## 🚀 How It Works
