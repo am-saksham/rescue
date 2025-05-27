@@ -40,9 +40,14 @@
 
 <p align="center">
   <img src="assets/r1.png" width="200">
-  <img src="screenshots/emergency.png" width="200">
-  <img src="screenshots/map.png" width="200">
-  <img src="screenshots/chat.png" width="200">
+  <img src="assets/r2.png" width="200">
+  <img src="assets/r3.png" width="200">
+  <img src="assets/r4.png" width="200">
+  <img src="assets/r5.png" width="200">
+  <img src="assets/r6.png" width="200">
+  <img src="assets/r7.png" width="200">
+  <img src="assets/r8.png" width="200">
+  <img src="assets/r9.png" width="200">
 </p>
 
 ## 🚀 How It Works
