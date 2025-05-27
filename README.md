@@ -39,7 +39,7 @@
 ## 🖼️ App Screenshots
 
 <p align="center">
-  <img src="screenshots/home.png" width="200">
+  <img src="assets/r1.png" width="200">
   <img src="screenshots/emergency.png" width="200">
   <img src="screenshots/map.png" width="200">
   <img src="screenshots/chat.png" width="200">
